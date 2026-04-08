@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beach Money Runner</title>
+<title>Money Runner Sultan</title>
 
 <style>
 body { margin:0; overflow:hidden; font-family:Arial; background:black; }
@@ -28,17 +28,15 @@ canvas { display:none; }
   height:100%;
   background:linear-gradient(#000,#222);
   color:white;
-
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
-
   text-align:center;
   padding:20px;
 }
 
-#intro h1 { color:gold; font-size:6vw; margin-bottom:10px; }
+#intro h1 { color:gold; font-size:6vw; }
 #intro p { font-size:4vw; margin:5px 0; }
 
 .btn {
@@ -61,7 +59,6 @@ canvas { display:none; }
   <p>👉 Geser kanan & kiri</p>
   <p>🧺 Kumpulkan uang ke keranjang</p>
   <p>💸 Cairkan ke <b>SALDO Anda</b></p>
-
   <button class="btn" onclick="startGame()">▶️ Mulai</button>
 </div>
 
@@ -82,33 +79,30 @@ bgMusic.volume = 0.4;
 const coinSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/10/audio_6c3b8f2b74.mp3?filename=coin-collect-1-183142.mp3");
 coinSound.volume = 0.8;
 
-// loading delay
+// loading
 setTimeout(()=>{
   loading.style.display="none";
   intro.style.display="flex";
 },1500);
 
-// start game
 function startGame(){
   intro.style.display="none";
   canvas.style.display="block";
-
   bgMusic.play();
   loop();
 }
 
-// 🌅 background
+// gambar
 const bg = new Image();
 bg.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
 
-// 💵 uang
 const moneyImg = new Image();
 moneyImg.src = "https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
 
-// 🧺 keranjang
 const basketImg = new Image();
-basketImg.src = "https://cdn-icons-png.flaticon.com/512/1046/1046857.png";
+basketImg.src = "https://cdn-icons-png.flaticon.com/512/263/263142.png";
 
+// lane
 const lanes = [
   canvas.width * 0.3,
   canvas.width * 0.5,
@@ -126,7 +120,12 @@ let player = {
 let gates = [];
 let suckedMoney = [];
 
-// swipe control
+// 🧺 STACK UANG
+let basketStack = [];
+let maxStack = 20;
+let isFull = false;
+
+// swipe
 let startX = 0;
 canvas.addEventListener("touchstart", e => startX = e.touches[0].clientX);
 canvas.addEventListener("touchend", e => {
@@ -144,7 +143,7 @@ setInterval(()=>{
   });
 },700);
 
-// update game
+// update
 function update(){
   player.x += (lanes[laneIndex] - player.x)*0.2;
 
@@ -154,14 +153,12 @@ function update(){
 
     if(Math.abs(player.x - lanes[g.lane]) < 40 && Math.abs(player.y - g.y) < 40){
 
-      // 🔊 suara uang
+      // 🔊 sound
       coinSound.currentTime = 0;
       coinSound.play();
 
-      // 📳 GETAR SAAT AMBIL UANG
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
+      // 📳 getar
+      if (navigator.vibrate) navigator.vibrate(50);
 
       suckedMoney.push({
         x: lanes[g.lane],
@@ -169,6 +166,15 @@ function update(){
       });
 
       player.money += 10;
+
+      // masuk keranjang
+      basketStack.push({});
+
+      if (basketStack.length >= maxStack) {
+        isFull = true;
+        if (navigator.vibrate) navigator.vibrate([100,50,100]);
+      }
+
       gates.splice(i,1);
     }
   });
@@ -183,7 +189,7 @@ function update(){
   });
 }
 
-// draw background
+// draw bg
 function drawBG(){
   if(bg.complete){
     ctx.drawImage(bg,0,0,canvas.width,canvas.height);
@@ -192,17 +198,41 @@ function drawBG(){
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
 
-// draw game
+// draw
 function draw(){
   drawBG();
 
-  // keranjang
-  ctx.drawImage(basketImg, player.x-50, player.y-35, 100, 70);
+  // glow saat penuh
+  if(isFull){
+    ctx.shadowColor="gold";
+    ctx.shadowBlur=30;
+  }
 
-  // uang player
+  ctx.drawImage(basketImg, player.x-60, player.y-50, 120, 100);
+  ctx.shadowBlur=0;
+
+  // 💵 uang menumpuk
+  basketStack.forEach((m,i)=>{
+    ctx.drawImage(
+      moneyImg,
+      player.x - 30 + (i%5)*12,
+      player.y - 20 - Math.floor(i/5)*10,
+      25,
+      25
+    );
+  });
+
+  // FULL text
+  if(isFull){
+    ctx.fillStyle="yellow";
+    ctx.font="bold 20px Arial";
+    ctx.fillText("FULL!!", player.x-30, player.y-70);
+  }
+
+  // saldo
   ctx.fillStyle="white";
   ctx.font="20px Arial";
-  ctx.fillText("$"+player.money, player.x-20, player.y-50);
+  ctx.fillText("$"+player.money, player.x-20, player.y-90);
 
   // uang jatuh
   gates.forEach(g=>{
@@ -213,7 +243,7 @@ function draw(){
     ctx.restore();
   });
 
-  // animasi masuk keranjang
+  // animasi masuk
   suckedMoney.forEach(m=>{
     ctx.drawImage(moneyImg, m.x-15, m.y-15, 30, 30);
   });
