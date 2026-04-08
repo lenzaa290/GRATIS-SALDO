@@ -4,12 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Beach Money Runner</title>
+
 <style>
-body { margin:0; overflow:hidden; background:black; }
-canvas { display:block; }
+body { margin:0; overflow:hidden; font-family:Arial; background:black; }
+canvas { display:none; }
+
+#loading {
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:black;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+#intro {
+  display:none;
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:linear-gradient(#000,#222);
+  color:white;
+  text-align:center;
+  padding:30px;
+}
+
+.btn {
+  margin-top:20px;
+  padding:15px 30px;
+  background:gold;
+  border:none;
+  font-size:18px;
+  border-radius:10px;
+}
 </style>
 </head>
+
 <body>
+
+<div id="loading">⏳ Memuat...</div>
+
+<div id="intro">
+  <h1 style="color:gold">💰 Cara Bermain</h1>
+  <p>👉 Geser kanan & kiri untuk mengumpulkan uang</p>
+  <p>🔥 Masukkan ke keranjang sebanyak mungkin</p>
+  <p>💸 Cairkan ke <b>SALDO Anda</b></p>
+
+  <button class="btn" onclick="startGame()">▶️ Mulai Sekarang</button>
+</div>
 
 <canvas id="game"></canvas>
 
@@ -20,13 +64,29 @@ const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-// 🌅 Background pantai
+// delay intro
+setTimeout(()=>{
+  loading.style.display="none";
+  intro.style.display="block";
+},2000);
+
+function startGame(){
+  intro.style.display="none";
+  canvas.style.display="block";
+  loop();
+}
+
+// 🌅 background
 const bg = new Image();
 bg.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
 
-// 💵 gambar uang
+// 💵 uang
 const moneyImg = new Image();
 moneyImg.src = "https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
+
+// 🧺 keranjang
+const basketImg = new Image();
+basketImg.src = "https://cdn-icons-png.flaticon.com/512/263/263115.png";
 
 // lane
 const lanes = [
@@ -37,16 +97,15 @@ const lanes = [
 
 let laneIndex = 1;
 
-// player
 let player = {
   x: lanes[laneIndex],
-  y: canvas.height - 150,
+  y: canvas.height - 120,
   money: 100
 };
 
 let gates = [];
 let effects = [];
-let progress = 0;
+let suckedMoney = []; // animasi masuk ke keranjang
 
 // swipe
 let startX = 0;
@@ -57,71 +116,54 @@ canvas.addEventListener("touchend", e => {
   if (dx < -40 && laneIndex > 0) laneIndex--;
 });
 
-// spawn uang (rintangan)
+// spawn uang
 setInterval(()=>{
-  let r = Math.random();
-  let mode = r<0.4?"add":r<0.7?"sub":"mul";
-  let value = mode==="mul"?2:Math.floor(Math.random()*20)+10;
-
   gates.push({
     lane: Math.floor(Math.random()*3),
     y: -60,
-    mode,
-    value,
     rot: 0
   });
-},900);
+},700);
 
 // update
 function update(){
-  player.x += (lanes[laneIndex] - player.x)*0.15;
-  progress += 0.003;
+  player.x += (lanes[laneIndex] - player.x)*0.2;
 
   gates.forEach((g,i)=>{
     g.y += 6;
     g.rot += 0.05;
 
-    if(Math.abs(player.x - lanes[g.lane]) < 35 && Math.abs(player.y - g.y) < 35){
+    if(Math.abs(player.x - lanes[g.lane]) < 40 && Math.abs(player.y - g.y) < 40){
 
-      if(g.mode==="add") player.money += g.value;
-      if(g.mode==="sub") player.money -= g.value;
-      if(g.mode==="mul") player.money *= g.value;
+      // animasi uang masuk
+      suckedMoney.push({
+        x: lanes[g.lane],
+        y: g.y
+      });
 
-      // efek uang meledak
-      for(let j=0;j<25;j++){
-        effects.push({
-          x: player.x,
-          y: player.y,
-          dx:(Math.random()-0.5)*6,
-          dy:-Math.random()*6,
-          life:40
-        });
-      }
+      player.money += 10;
 
       gates.splice(i,1);
     }
   });
 
-  effects.forEach((e,i)=>{
-    e.x += e.dx;
-    e.y += e.dy;
-    e.life--;
-    if(e.life<=0) effects.splice(i,1);
-  });
+  // animasi uang ke keranjang
+  suckedMoney.forEach((m,i)=>{
+    m.x += (player.x - m.x)*0.2;
+    m.y += (player.y - m.y)*0.2;
 
-  if(player.money <= 0){
-    alert("Game Over!");
-    location.reload();
-  }
+    if(Math.abs(m.x-player.x)<5 && Math.abs(m.y-player.y)<5){
+      suckedMoney.splice(i,1);
+    }
+  });
 }
 
-// background
+// draw bg
 function drawBG(){
   if(bg.complete){
-    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bg,0,0,canvas.width,canvas.height);
   }
-
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillStyle="rgba(0,0,0,0.3)";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
 
@@ -129,70 +171,28 @@ function drawBG(){
 function draw(){
   drawBG();
 
-  // player
-  ctx.shadowColor="gold";
-  ctx.shadowBlur=25;
-  ctx.fillStyle="gold";
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, 25, 0, Math.PI*2);
-  ctx.fill();
-  ctx.shadowBlur=0;
+  // keranjang player
+  ctx.drawImage(basketImg, player.x-40, player.y-30, 80, 60);
 
+  // saldo
   ctx.fillStyle="white";
   ctx.font="20px Arial";
   ctx.textAlign="center";
-  ctx.fillText("$"+player.money, player.x, player.y-40);
+  ctx.fillText("$"+player.money, player.x, player.y-50);
 
-  // 💵 rintangan uang
+  // uang jatuh
   gates.forEach(g=>{
     ctx.save();
-
     ctx.translate(lanes[g.lane], g.y);
     ctx.rotate(g.rot);
-
-    // glow
-    ctx.shadowColor = g.mode==="add"?"lime":g.mode==="sub"?"red":"purple";
-    ctx.shadowBlur = 25;
-
-    // gambar uang
     ctx.drawImage(moneyImg, -25, -25, 50, 50);
-
-    ctx.shadowBlur = 0;
-
     ctx.restore();
-
-    // teks nilai
-    ctx.fillStyle="white";
-    ctx.font="16px Arial";
-    ctx.fillText(
-      g.mode==="add"?"+"+g.value:
-      g.mode==="sub"?"-"+g.value:
-      "x"+g.value,
-      lanes[g.lane],
-      g.y - 30
-    );
   });
 
-  // efek uang pecah
-  ctx.fillStyle="gold";
-  effects.forEach(e=>{
-    ctx.fillRect(e.x, e.y, 4, 4);
+  // animasi masuk keranjang
+  suckedMoney.forEach(m=>{
+    ctx.drawImage(moneyImg, m.x-15, m.y-15, 30, 30);
   });
-
-  // UI uang
-  ctx.fillStyle="#000";
-  ctx.fillRect(canvas.width-140,20,120,50);
-  ctx.strokeStyle="gold";
-  ctx.strokeRect(canvas.width-140,20,120,50);
-
-  ctx.fillStyle="gold";
-  ctx.fillText("$"+player.money, canvas.width-80,50);
-
-  // progress bar
-  ctx.fillStyle="#222";
-  ctx.fillRect(50,20,250,10);
-  ctx.fillStyle="gold";
-  ctx.fillRect(50,20,250*progress,10);
 }
 
 // loop
@@ -201,8 +201,6 @@ function loop(){
   draw();
   requestAnimationFrame(loop);
 }
-
-loop();
 </script>
 
 </body>
