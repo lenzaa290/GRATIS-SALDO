@@ -1,201 +1,266 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Money Runner Real</title>
+<title>Money Runner Sultan</title>
 
 <style>
-body{margin:0;overflow:hidden;font-family:Arial;background:black;}
-canvas{display:none}
+body { margin:0; overflow:hidden; font-family:Arial; background:black; }
+canvas { display:none; }
+
+/* loading */
+#loading {
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:black;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:5vw;
+}
 
 /* intro */
-#intro{
-position:fixed;
-width:100%;
-height:100%;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-color:white;
-background:#000;
-text-align:center;
-padding:20px;
+#intro {
+  display:none;
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:linear-gradient(#000,#222);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  padding:20px;
 }
-button{padding:12px 25px;background:gold;border:none;border-radius:10px}
 
-/* notif */
-#notif{
-position:fixed;
-top:-120px;
-width:100%;
-display:flex;
-justify-content:center;
-transition:0.5s;
-z-index:9999;
-}
-.notif-box{
-background:white;
-padding:10px;
-border-radius:15px;
-display:flex;
-gap:10px;
-width:90%;
-max-width:400px;
-}
-.notif-box img{width:40px}
+#intro h1 { color:gold; font-size:6vw; }
+#intro p { font-size:4vw; margin:5px 0; }
 
-/* withdraw */
-#withdraw{
-display:none;
-position:fixed;
-top:0;
-width:100%;
-height:100%;
-background:#0f172a;
-color:white;
-text-align:center;
-padding:20px;
+.btn {
+  margin-top:20px;
+  padding:12px 25px;
+  font-size:4vw;
+  background:gold;
+  border:none;
+  border-radius:12px;
 }
-.card{background:#1e293b;padding:20px;border-radius:15px;color:gold;margin-top:20px}
+
+/* 🔔 NOTIFIKASI */
+#notif {
+  position:fixed;
+  top:-120px;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  transition:0.5s;
+  z-index:9999;
+}
+
+.notif-box {
+  background:white;
+  color:black;
+  padding:10px;
+  border-radius:15px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:90%;
+  max-width:400px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
+
+.notif-box img {
+  width:40px;
+}
 </style>
 </head>
 
 <body>
 
+<div id="loading">⏳ Memuat...</div>
+
 <div id="intro">
-<h2>💰 Cara Bermain</h2>
-<p>Geser kiri kanan</p>
-<button onclick="startGame()">Mulai</button>
+  <h1>💰 Cara Bermain</h1>
+  <p>👉 Geser kanan & kiri</p>
+  <p>🧺 Kumpulkan uang ke keranjang</p>
+  <p>💸 Cairkan ke <b>SALDO Anda</b></p>
+  <button class="btn" onclick="startGame()">▶️ Mulai</button>
 </div>
 
+<!-- 🔔 NOTIF -->
 <div id="notif">
-<div class="notif-box" onclick="openWithdraw()">
-<img src="https://cdn-icons-png.flaticon.com/512/733/733585.png">
-<div><b>Notifikasi</b><br>Satu langkah lagi cairkan saldo Anda sekarang</div>
-</div>
-</div>
-
-<div id="withdraw">
-<h2>💰 Penarikan</h2>
-<div class="card">$<span id="saldoText"></span></div>
-<input id="tujuan" placeholder="Nomor tujuan" style="padding:10px;border-radius:10px;margin-top:15px">
-<br>
-<button onclick="cairkan()">💸 Cairkan</button>
-<div id="status"></div>
+  <div class="notif-box" onclick="openNotif()">
+    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png">
+    <div>
+      <b>WhatsApp</b><br>
+      Saldo Anda siap dicairkan!
+    </div>
+  </div>
 </div>
 
 <canvas id="game"></canvas>
 
 <script>
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
-canvas.width=innerWidth;
-canvas.height=innerHeight;
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-// gambar
-const bg=new Image();
-bg.src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
-const moneyImg=new Image();
-moneyImg.src="https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
+// audio
+const bgMusic = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b4f4c6a7.mp3");
+bgMusic.loop = true;
 
-const basketImg=new Image();
-basketImg.src="https://cdn-icons-png.flaticon.com/512/263/263142.png";
+const coinSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/10/audio_6c3b8f2b74.mp3");
 
-// player
-const lanes=[canvas.width*0.3,canvas.width*0.5,canvas.width*0.7];
-let lane=1;
+// loading
+setTimeout(()=>{
+  loading.style.display="none";
+  intro.style.display="flex";
+},1500);
 
-let player={x:lanes[1],y:canvas.height-120,money:100};
-
-let items=[];
-let notifShown=false;
-
-// start
 function startGame(){
-intro.style.display="none";
-canvas.style.display="block";
-loop();
+  intro.style.display="none";
+  canvas.style.display="block";
+  bgMusic.play();
+  loop();
 }
 
+// notif
+let notifShown = false;
+
+function showNotif(){
+  let n = document.getElementById("notif");
+  n.style.top = "20px";
+
+  setTimeout(()=>{
+    n.style.top = "-120px";
+  },5000);
+}
+
+function openNotif(){
+  alert("💰 Saldo kamu siap dicairkan!");
+}
+
+// gambar
+const bg = new Image();
+bg.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
+
+const moneyImg = new Image();
+moneyImg.src = "https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
+
+const basketImg = new Image();
+basketImg.src = "https://cdn-icons-png.flaticon.com/512/263/263142.png";
+
+// lane
+const lanes = [canvas.width*0.3, canvas.width*0.5, canvas.width*0.7];
+let laneIndex = 1;
+
+let player = {
+  x: lanes[laneIndex],
+  y: canvas.height - 120,
+  money: 100
+};
+
+let gates = [];
+let suckedMoney = [];
+
+let basketStack = [];
+let maxStack = 20;
+let isFull = false;
+
 // swipe
-let startX=0;
-canvas.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
-canvas.addEventListener("touchend",e=>{
-let dx=e.changedTouches[0].clientX-startX;
-if(dx>20&&lane<2)lane++;
-if(dx<-20&&lane>0)lane--;
+let startX = 0;
+canvas.addEventListener("touchstart", e => startX = e.touches[0].clientX);
+canvas.addEventListener("touchend", e => {
+  let dx = e.changedTouches[0].clientX - startX;
+  if (dx > 20 && laneIndex < 2) laneIndex++;
+  if (dx < -20 && laneIndex > 0) laneIndex--;
 });
 
 // spawn
 setInterval(()=>{
-items.push({lane:Math.floor(Math.random()*3),y:-50});
+  gates.push({
+    lane: Math.floor(Math.random()*3),
+    y: -60,
+    rot: 0
+  });
 },600);
 
 // update
 function update(){
-player.x+= (lanes[lane]-player.x)*0.3;
 
-items.forEach((it,i)=>{
-it.y+=7;
+  let targetX = lanes[laneIndex];
+  player.x += (targetX - player.x) * 0.35;
 
-if(Math.abs(player.x-lanes[it.lane])<40 && Math.abs(player.y-it.y)<40){
-player.money+=10;
-items.splice(i,1);
+  if (Math.abs(player.x - targetX) < 0.5) {
+    player.x = targetX;
+  }
 
-if(player.money>=500&&!notifShown){
-notifShown=true;
-showNotif();
-}
-}
-});
+  gates.forEach((g,i)=>{
+    g.y += 7;
+
+    if(Math.abs(player.x - lanes[g.lane]) < 40 && Math.abs(player.y - g.y) < 40){
+
+      coinSound.currentTime = 0;
+      coinSound.play();
+
+      if (navigator.vibrate) navigator.vibrate(50);
+
+      player.money += 10;
+      basketStack.push({});
+
+      // 🔔 TRIGGER NOTIF
+      if(player.money >= 500 && !notifShown){
+        notifShown = true;
+        showNotif();
+        if(navigator.vibrate) navigator.vibrate([200,100,200]);
+      }
+
+      if (basketStack.length >= maxStack) {
+        isFull = true;
+      }
+
+      gates.splice(i,1);
+    }
+  });
 }
 
 // draw
 function draw(){
-ctx.drawImage(bg,0,0,canvas.width,canvas.height);
+  ctx.drawImage(bg,0,0,canvas.width,canvas.height);
 
-// keranjang
-ctx.drawImage(basketImg,player.x-50,player.y-40,100,80);
+  ctx.drawImage(basketImg, player.x-60, player.y-50, 120, 100);
 
-// uang jatuh
-items.forEach(it=>{
-ctx.drawImage(moneyImg,lanes[it.lane]-25,it.y,50,50);
-});
+  basketStack.forEach((m,i)=>{
+    ctx.drawImage(
+      moneyImg,
+      player.x - 30 + (i%5)*12,
+      player.y - 20 - Math.floor(i/5)*10,
+      25,
+      25
+    );
+  });
 
-// saldo
-ctx.fillStyle="white";
-ctx.fillText("$"+player.money,20,30);
+  ctx.fillStyle="white";
+  ctx.fillText("$"+player.money, player.x-20, player.y-90);
+
+  gates.forEach(g=>{
+    ctx.drawImage(moneyImg, lanes[g.lane]-25, g.y, 50, 50);
+  });
 }
 
 // loop
 function loop(){
-update();
-draw();
-requestAnimationFrame(loop);
-}
-
-// notif
-function showNotif(){
-notif.style.top="20px";
-setTimeout(()=>notif.style.top="-120px",4000);
-}
-
-// buka withdraw
-function openWithdraw(){
-canvas.style.display="none";
-withdraw.style.display="block";
-saldoText.innerText=player.money;
-}
-
-// cairkan
-function cairkan(){
-let t=tujuan.value;
-if(t==""){status.innerHTML="Isi dulu";return;}
-
-status.innerHTML="⏳ Memproses...";
-setTimeout(()=>status.innerHTML="💸 Berhasil!",3000);
+  update();
+  draw();
+  requestAnimationFrame(loop);
 }
 </script>
 
