@@ -72,11 +72,11 @@ canvas.width = innerWidth;
 canvas.height = innerHeight;
 
 // 🔊 AUDIO
-const bgMusic = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b4f4c6a7.mp3?filename=summer-ambient-110998.mp3");
+const bgMusic = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b4f4c6a7.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.4;
 
-const coinSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/10/audio_6c3b8f2b74.mp3?filename=coin-collect-1-183142.mp3");
+const coinSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/10/audio_6c3b8f2b74.mp3");
 coinSound.volume = 0.8;
 
 // loading
@@ -120,7 +120,7 @@ let player = {
 let gates = [];
 let suckedMoney = [];
 
-// 🧺 STACK UANG
+// stack uang
 let basketStack = [];
 let maxStack = 20;
 let isFull = false;
@@ -130,8 +130,9 @@ let startX = 0;
 canvas.addEventListener("touchstart", e => startX = e.touches[0].clientX);
 canvas.addEventListener("touchend", e => {
   let dx = e.changedTouches[0].clientX - startX;
-  if (dx > 40 && laneIndex < 2) laneIndex++;
-  if (dx < -40 && laneIndex > 0) laneIndex--;
+
+  if (dx > 20 && laneIndex < 2) laneIndex++;
+  if (dx < -20 && laneIndex > 0) laneIndex--;
 });
 
 // spawn uang
@@ -141,23 +142,30 @@ setInterval(()=>{
     y: -60,
     rot: 0
   });
-},700);
+},600);
 
 // update
 function update(){
-  player.x += (lanes[laneIndex] - player.x)*0.2;
+
+  // 🚀 MOVEMENT SUPER HALUS & CEPAT
+  let targetX = lanes[laneIndex];
+  let speed = 0.35;
+
+  player.x += (targetX - player.x) * speed;
+
+  if (Math.abs(player.x - targetX) < 0.5) {
+    player.x = targetX;
+  }
 
   gates.forEach((g,i)=>{
-    g.y += 6;
+    g.y += 7;
     g.rot += 0.05;
 
     if(Math.abs(player.x - lanes[g.lane]) < 40 && Math.abs(player.y - g.y) < 40){
 
-      // 🔊 sound
       coinSound.currentTime = 0;
       coinSound.play();
 
-      // 📳 getar
       if (navigator.vibrate) navigator.vibrate(50);
 
       suckedMoney.push({
@@ -166,8 +174,6 @@ function update(){
       });
 
       player.money += 10;
-
-      // masuk keranjang
       basketStack.push({});
 
       if (basketStack.length >= maxStack) {
@@ -202,7 +208,6 @@ function drawBG(){
 function draw(){
   drawBG();
 
-  // glow saat penuh
   if(isFull){
     ctx.shadowColor="gold";
     ctx.shadowBlur=30;
@@ -211,7 +216,7 @@ function draw(){
   ctx.drawImage(basketImg, player.x-60, player.y-50, 120, 100);
   ctx.shadowBlur=0;
 
-  // 💵 uang menumpuk
+  // uang menumpuk
   basketStack.forEach((m,i)=>{
     ctx.drawImage(
       moneyImg,
@@ -222,19 +227,16 @@ function draw(){
     );
   });
 
-  // FULL text
   if(isFull){
     ctx.fillStyle="yellow";
     ctx.font="bold 20px Arial";
     ctx.fillText("FULL!!", player.x-30, player.y-70);
   }
 
-  // saldo
   ctx.fillStyle="white";
   ctx.font="20px Arial";
   ctx.fillText("$"+player.money, player.x-20, player.y-90);
 
-  // uang jatuh
   gates.forEach(g=>{
     ctx.save();
     ctx.translate(lanes[g.lane], g.y);
@@ -243,7 +245,6 @@ function draw(){
     ctx.restore();
   });
 
-  // animasi masuk
   suckedMoney.forEach(m=>{
     ctx.drawImage(moneyImg, m.x-15, m.y-15, 30, 30);
   });
