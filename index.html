@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Extreme Sultan Runner</title>
+<title>Beach Money Runner</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 canvas { display:block; }
@@ -19,6 +19,14 @@ const ctx = canvas.getContext("2d");
 
 canvas.width = innerWidth;
 canvas.height = innerHeight;
+
+// 🌅 Background pantai
+const bg = new Image();
+bg.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
+
+// 💵 gambar uang
+const moneyImg = new Image();
+moneyImg.src = "https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
 
 // lane
 const lanes = [
@@ -38,9 +46,7 @@ let player = {
 
 let gates = [];
 let effects = [];
-let cars = [];
 let progress = 0;
-let shake = 0;
 
 // swipe
 let startX = 0;
@@ -51,7 +57,7 @@ canvas.addEventListener("touchend", e => {
   if (dx < -40 && laneIndex > 0) laneIndex--;
 });
 
-// spawn gate
+// spawn uang (rintangan)
 setInterval(()=>{
   let r = Math.random();
   let mode = r<0.4?"add":r<0.7?"sub":"mul";
@@ -61,19 +67,10 @@ setInterval(()=>{
     lane: Math.floor(Math.random()*3),
     y: -60,
     mode,
-    value
+    value,
+    rot: 0
   });
-},800);
-
-// spawn mobil
-setInterval(()=>{
-  cars.push({
-    x: Math.random()*canvas.width,
-    y: -60,
-    speed: Math.random()*5+3,
-    color: ["#0ff","#f0f","#ff0"][Math.floor(Math.random()*3)]
-  });
-},1000);
+},900);
 
 // update
 function update(){
@@ -81,7 +78,8 @@ function update(){
   progress += 0.003;
 
   gates.forEach((g,i)=>{
-    g.y += 7;
+    g.y += 6;
+    g.rot += 0.05;
 
     if(Math.abs(player.x - lanes[g.lane]) < 35 && Math.abs(player.y - g.y) < 35){
 
@@ -89,26 +87,19 @@ function update(){
       if(g.mode==="sub") player.money -= g.value;
       if(g.mode==="mul") player.money *= g.value;
 
-      shake = 10;
-
-      // efek uang ekstrem
+      // efek uang meledak
       for(let j=0;j<25;j++){
         effects.push({
           x: player.x,
           y: player.y,
-          dx:(Math.random()-0.5)*8,
-          dy:-Math.random()*8,
-          life:50
+          dx:(Math.random()-0.5)*6,
+          dy:-Math.random()*6,
+          life:40
         });
       }
 
       gates.splice(i,1);
     }
-  });
-
-  cars.forEach((c,i)=>{
-    c.y += c.speed;
-    if(c.y > canvas.height) cars.splice(i,1);
   });
 
   effects.forEach((e,i)=>{
@@ -118,105 +109,77 @@ function update(){
     if(e.life<=0) effects.splice(i,1);
   });
 
-  if(shake > 0) shake--;
-
   if(player.money <= 0){
     alert("Game Over!");
     location.reload();
   }
 }
 
-// background parallax
+// background
 function drawBG(){
-  let sky = ctx.createLinearGradient(0,0,0,canvas.height);
-  sky.addColorStop(0,"#0f2027");
-  sky.addColorStop(1,"#2c5364");
-  ctx.fillStyle = sky;
+  if(bg.complete){
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // gedung jauh
-  for(let i=0;i<12;i++){
-    let x = i*(canvas.width/12);
-    let h = 200 + Math.sin(i)*80;
-
-    ctx.fillStyle="#111";
-    ctx.fillRect(x, canvas.height-h-250, 60, h);
-  }
-
-  // gedung dekat
-  for(let i=0;i<12;i++){
-    let x = i*(canvas.width/12);
-    let h = 250 + Math.cos(i)*100;
-
-    ctx.fillStyle="#000";
-    ctx.fillRect(x, canvas.height-h-150, 70, h);
-  }
-
-  // jalan
-  ctx.fillStyle="#111";
-  ctx.beginPath();
-  ctx.moveTo(canvas.width*0.2,canvas.height);
-  ctx.lineTo(canvas.width*0.4,0);
-  ctx.lineTo(canvas.width*0.6,0);
-  ctx.lineTo(canvas.width*0.8,canvas.height);
-  ctx.fill();
 }
 
 // draw
 function draw(){
-  ctx.save();
-
-  // camera shake
-  ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
-
   drawBG();
 
-  // player glow
+  // player
   ctx.shadowColor="gold";
-  ctx.shadowBlur=30;
+  ctx.shadowBlur=25;
   ctx.fillStyle="gold";
   ctx.beginPath();
   ctx.arc(player.x, player.y, 25, 0, Math.PI*2);
   ctx.fill();
   ctx.shadowBlur=0;
 
-  // uang
   ctx.fillStyle="white";
   ctx.font="20px Arial";
   ctx.textAlign="center";
-  ctx.fillText("$"+player.money, player.x, player.y-50);
+  ctx.fillText("$"+player.money, player.x, player.y-40);
 
-  // gates
+  // 💵 rintangan uang
   gates.forEach(g=>{
-    ctx.shadowColor=g.mode==="add"?"blue":g.mode==="sub"?"red":"purple";
-    ctx.shadowBlur=20;
+    ctx.save();
 
-    ctx.fillStyle=g.mode==="add"?"blue":g.mode==="sub"?"red":"purple";
-    ctx.fillRect(lanes[g.lane]-30, g.y, 60, 40);
+    ctx.translate(lanes[g.lane], g.y);
+    ctx.rotate(g.rot);
 
-    ctx.shadowBlur=0;
+    // glow
+    ctx.shadowColor = g.mode==="add"?"lime":g.mode==="sub"?"red":"purple";
+    ctx.shadowBlur = 25;
 
+    // gambar uang
+    ctx.drawImage(moneyImg, -25, -25, 50, 50);
+
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+
+    // teks nilai
     ctx.fillStyle="white";
-    let txt = g.mode==="add"?"+"+g.value: g.mode==="sub"?"-"+g.value:"x"+g.value;
-    ctx.fillText(txt, lanes[g.lane], g.y+25);
+    ctx.font="16px Arial";
+    ctx.fillText(
+      g.mode==="add"?"+"+g.value:
+      g.mode==="sub"?"-"+g.value:
+      "x"+g.value,
+      lanes[g.lane],
+      g.y - 30
+    );
   });
 
-  // mobil neon
-  cars.forEach(c=>{
-    ctx.shadowColor=c.color;
-    ctx.shadowBlur=20;
-    ctx.fillStyle=c.color;
-    ctx.fillRect(c.x, c.y, 60, 25);
-    ctx.shadowBlur=0;
-  });
-
-  // efek uang
+  // efek uang pecah
   ctx.fillStyle="gold";
   effects.forEach(e=>{
-    ctx.fillRect(e.x, e.y, 5, 5);
+    ctx.fillRect(e.x, e.y, 4, 4);
   });
 
-  // UI
+  // UI uang
   ctx.fillStyle="#000";
   ctx.fillRect(canvas.width-140,20,120,50);
   ctx.strokeStyle="gold";
@@ -225,13 +188,11 @@ function draw(){
   ctx.fillStyle="gold";
   ctx.fillText("$"+player.money, canvas.width-80,50);
 
-  // progress
+  // progress bar
   ctx.fillStyle="#222";
-  ctx.fillRect(50,20,250,12);
+  ctx.fillRect(50,20,250,10);
   ctx.fillStyle="gold";
-  ctx.fillRect(50,20,250*progress,12);
-
-  ctx.restore();
+  ctx.fillRect(50,20,250*progress,10);
 }
 
 // loop
