@@ -1,245 +1,201 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Money Runner App</title>
+<title>Money Runner Real</title>
 
 <style>
-body { margin:0; font-family:Arial; background:#0f172a; color:white; }
-
-/* layar */
-.screen {
-  display:none;
-  width:100%;
-  height:100vh;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-}
-
-/* loading */
-#loading { display:flex; background:black; }
+body{margin:0;overflow:hidden;font-family:Arial;background:black;}
+canvas{display:none}
 
 /* intro */
-#intro { text-align:center; padding:20px; }
-
-/* game */
-canvas { display:none; background:black; }
+#intro{
+position:fixed;
+width:100%;
+height:100%;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+color:white;
+background:#000;
+text-align:center;
+padding:20px;
+}
+button{padding:12px 25px;background:gold;border:none;border-radius:10px}
 
 /* notif */
-#notif {
-  position:fixed;
-  top:-120px;
-  left:0;
-  width:100%;
-  display:flex;
-  justify-content:center;
-  transition:0.5s;
-  z-index:9999;
+#notif{
+position:fixed;
+top:-120px;
+width:100%;
+display:flex;
+justify-content:center;
+transition:0.5s;
+z-index:9999;
 }
-.notif-box {
-  background:white;
-  color:black;
-  padding:10px;
-  border-radius:15px;
-  display:flex;
-  gap:10px;
-  width:90%;
-  max-width:400px;
+.notif-box{
+background:white;
+padding:10px;
+border-radius:15px;
+display:flex;
+gap:10px;
+width:90%;
+max-width:400px;
 }
-.notif-box img { width:40px; }
+.notif-box img{width:40px}
 
 /* withdraw */
-#withdraw { padding:20px; text-align:center; }
-.card {
-  margin-top:20px;
-  background:#1e293b;
-  padding:20px;
-  border-radius:15px;
-  font-size:26px;
-  color:gold;
+#withdraw{
+display:none;
+position:fixed;
+top:0;
+width:100%;
+height:100%;
+background:#0f172a;
+color:white;
+text-align:center;
+padding:20px;
 }
-
-input, select {
-  margin-top:15px;
-  padding:12px;
-  width:80%;
-  border-radius:10px;
-  border:none;
-}
-
-button {
-  margin-top:20px;
-  padding:15px 25px;
-  background:gold;
-  border:none;
-  border-radius:10px;
-  font-size:16px;
-}
+.card{background:#1e293b;padding:20px;border-radius:15px;color:gold;margin-top:20px}
 </style>
 </head>
 
 <body>
 
-<!-- loading -->
-<div id="loading" class="screen">⏳ Memuat...</div>
-
-<!-- intro -->
-<div id="intro" class="screen">
-  <h2>💰 Cara Bermain</h2>
-  <p>Geser kiri kanan</p>
-  <p>Kumpulkan uang</p>
-  <button onclick="startGame()">Mulai</button>
+<div id="intro">
+<h2>💰 Cara Bermain</h2>
+<p>Geser kiri kanan</p>
+<button onclick="startGame()">Mulai</button>
 </div>
 
-<!-- notif -->
 <div id="notif">
-  <div class="notif-box" onclick="openWithdraw()">
-    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png">
-    <div>
-      <b>Notifikasi</b><br>
-      Satu langkah lagi cairkan saldo Anda sekarang
-    </div>
-  </div>
+<div class="notif-box" onclick="openWithdraw()">
+<img src="https://cdn-icons-png.flaticon.com/512/733/733585.png">
+<div><b>Notifikasi</b><br>Satu langkah lagi cairkan saldo Anda sekarang</div>
+</div>
 </div>
 
-<!-- game -->
+<div id="withdraw">
+<h2>💰 Penarikan</h2>
+<div class="card">$<span id="saldoText"></span></div>
+<input id="tujuan" placeholder="Nomor tujuan" style="padding:10px;border-radius:10px;margin-top:15px">
+<br>
+<button onclick="cairkan()">💸 Cairkan</button>
+<div id="status"></div>
+</div>
+
 <canvas id="game"></canvas>
 
-<!-- withdraw -->
-<div id="withdraw" class="screen">
-  <h2>💰 Penarikan Saldo</h2>
-
-  <div class="card">$<span id="saldoText">0</span></div>
-
-  <select>
-    <option>E-Wallet</option>
-    <option>Transfer Bank</option>
-  </select>
-
-  <input id="tujuan" placeholder="Nomor / Rekening">
-
-  <button onclick="cairkan()">💸 Cairkan</button>
-
-  <div id="status"></div>
-</div>
-
 <script>
-const loading = document.getElementById("loading");
-const intro = document.getElementById("intro");
-const canvas = document.getElementById("game");
-const withdraw = document.getElementById("withdraw");
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+canvas.width=innerWidth;
+canvas.height=innerHeight;
 
-const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+// gambar
+const bg=new Image();
+bg.src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
 
-// tampil awal
-loading.style.display="flex";
-setTimeout(()=>{
-  loading.style.display="none";
-  intro.style.display="flex";
-},1500);
+const moneyImg=new Image();
+moneyImg.src="https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
 
-// game start
-function startGame(){
-  intro.style.display="none";
-  canvas.style.display="block";
-  loop();
-}
+const basketImg=new Image();
+basketImg.src="https://cdn-icons-png.flaticon.com/512/263/263142.png";
 
-// notif
-let notifShown = false;
-function showNotif(){
-  notif.style.top="20px";
-  setTimeout(()=>notif.style.top="-120px",4000);
-}
+// player
+const lanes=[canvas.width*0.3,canvas.width*0.5,canvas.width*0.7];
+let lane=1;
 
-function openWithdraw(){
-  canvas.style.display="none";
-  withdraw.style.display="flex";
-  document.getElementById("saldoText").innerText = player.money;
-}
-
-// cairkan
-function cairkan(){
-  let t = document.getElementById("tujuan").value;
-  let s = document.getElementById("status");
-
-  if(t==""){
-    s.innerHTML="❗ Isi data dulu";
-    return;
-  }
-
-  s.innerHTML="⏳ Memproses...";
-  setTimeout(()=>s.innerHTML="🔄 Menghubungkan...",1500);
-  setTimeout(()=>s.innerHTML="💸 Mengirim dana...",3000);
-  setTimeout(()=>s.innerHTML="✅ Berhasil!",5000);
-}
-
-// game logic
-const lanes = [canvas.width*0.3, canvas.width*0.5, canvas.width*0.7];
-let laneIndex=1;
-
-let player={ x:lanes[1], y:canvas.height-100, money:100 };
+let player={x:lanes[1],y:canvas.height-120,money:100};
 
 let items=[];
+let notifShown=false;
 
-setInterval(()=>{
-  items.push({lane:Math.floor(Math.random()*3), y:-50});
-},600);
+// start
+function startGame(){
+intro.style.display="none";
+canvas.style.display="block";
+loop();
+}
 
-// kontrol
+// swipe
 let startX=0;
 canvas.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
 canvas.addEventListener("touchend",e=>{
-  let dx=e.changedTouches[0].clientX-startX;
-  if(dx>20 && laneIndex<2) laneIndex++;
-  if(dx<-20 && laneIndex>0) laneIndex--;
+let dx=e.changedTouches[0].clientX-startX;
+if(dx>20&&lane<2)lane++;
+if(dx<-20&&lane>0)lane--;
 });
+
+// spawn
+setInterval(()=>{
+items.push({lane:Math.floor(Math.random()*3),y:-50});
+},600);
 
 // update
 function update(){
-  player.x += (lanes[laneIndex]-player.x)*0.3;
+player.x+= (lanes[lane]-player.x)*0.3;
 
-  items.forEach((it,i)=>{
-    it.y+=7;
+items.forEach((it,i)=>{
+it.y+=7;
 
-    if(Math.abs(player.x-lanes[it.lane])<40 && Math.abs(player.y-it.y)<40){
-      player.money+=10;
-      items.splice(i,1);
+if(Math.abs(player.x-lanes[it.lane])<40 && Math.abs(player.y-it.y)<40){
+player.money+=10;
+items.splice(i,1);
 
-      if(player.money>=500 && !notifShown){
-        notifShown=true;
-        showNotif();
-      }
-    }
-  });
+if(player.money>=500&&!notifShown){
+notifShown=true;
+showNotif();
+}
+}
+});
 }
 
 // draw
 function draw(){
-  ctx.fillStyle="black";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.drawImage(bg,0,0,canvas.width,canvas.height);
 
-  ctx.fillStyle="yellow";
-  ctx.fillRect(player.x-20,player.y,40,40);
+// keranjang
+ctx.drawImage(basketImg,player.x-50,player.y-40,100,80);
 
-  ctx.fillStyle="green";
-  items.forEach(it=>{
-    ctx.fillRect(lanes[it.lane]-15,it.y,30,30);
-  });
+// uang jatuh
+items.forEach(it=>{
+ctx.drawImage(moneyImg,lanes[it.lane]-25,it.y,50,50);
+});
 
-  ctx.fillStyle="white";
-  ctx.fillText("$"+player.money,20,30);
+// saldo
+ctx.fillStyle="white";
+ctx.fillText("$"+player.money,20,30);
 }
 
 // loop
 function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
+update();
+draw();
+requestAnimationFrame(loop);
+}
+
+// notif
+function showNotif(){
+notif.style.top="20px";
+setTimeout(()=>notif.style.top="-120px",4000);
+}
+
+// buka withdraw
+function openWithdraw(){
+canvas.style.display="none";
+withdraw.style.display="block";
+saldoText.innerText=player.money;
+}
+
+// cairkan
+function cairkan(){
+let t=tujuan.value;
+if(t==""){status.innerHTML="Isi dulu";return;}
+
+status.innerHTML="⏳ Memproses...";
+setTimeout(()=>status.innerHTML="💸 Berhasil!",3000);
 }
 </script>
 
